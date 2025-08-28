@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from src.app.schemas.answers import AnswerOut
 
 
 class QuestionCreate(BaseModel):
@@ -12,3 +13,7 @@ class QuestionOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class QuestionWithAnswers(QuestionOut):
+    answers: list[AnswerOut]
