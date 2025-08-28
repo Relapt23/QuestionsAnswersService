@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
+
+from src.app.schemas.answers import CreateAnswer, AnswerOut
 from src.app.schemas.questions import QuestionOut, QuestionCreate, QuestionWithAnswers
-from src.db.models import Question
+from src.db.models import Question, Answer
 
 from src.db.db_config import make_session
 
@@ -52,8 +54,6 @@ async def get_questions_with_answers(
     if not question:
         raise HTTPException(status_code=404, detail="question_not_found")
 
-    question.answers.sort(reverse=True)
-
     return question
 
 
@@ -71,3 +71,24 @@ async def delete_question(
 
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{question_id}/answers/", response_model=AnswerOut)
+async def create_answer(
+    question_id: int,
+    payload: CreateAnswer,
+    session: AsyncSession = Depends(make_session),
+):
+    db_question = (
+        await session.execute(select(Question).where(Question.id == question_id))
+    ).scalar_one_or_none()
+    if db_question is None:
+        raise HTTPException(status_code=404, detail="question_not_found")
+
+    new_answer = Answer(
+        question_id=question_id, user_id=str(payload.user_id), text=payload.text
+    )
+    session.add(new_answer)
+    await session.commit()
+    await session.refresh(new_answer)
+    return new_answer
