@@ -9,10 +9,10 @@ from src.db.models import Question, Answer
 
 from src.db.db_config import make_session
 
-router = APIRouter(prefix="/questions", tags=["questions"])
+router = APIRouter()
 
 
-@router.get("/", response_model=list[QuestionOut])
+@router.get("/questions/", response_model=list[QuestionOut])
 async def get_questions(
     session: AsyncSession = Depends(make_session),
 ):
@@ -25,7 +25,7 @@ async def get_questions(
     return questions
 
 
-@router.post("/", status_code=201)
+@router.post("/questions/", status_code=201)
 async def create_question(
     payload: QuestionCreate, session: AsyncSession = Depends(make_session)
 ):
@@ -36,7 +36,7 @@ async def create_question(
     return new_question
 
 
-@router.get("/{question_id}", response_model=QuestionWithAnswers)
+@router.get("/questions/{question_id}", response_model=QuestionWithAnswers)
 async def get_questions_with_answers(
     question_id: int, session: AsyncSession = Depends(make_session)
 ):
@@ -57,7 +57,7 @@ async def get_questions_with_answers(
     return question
 
 
-@router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_question(
     question_id: int, session: AsyncSession = Depends(make_session)
 ):
@@ -73,7 +73,7 @@ async def delete_question(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/{question_id}/answers/", response_model=AnswerOut)
+@router.post("/questions/{question_id}/answers/", response_model=AnswerOut)
 async def create_answer(
     question_id: int,
     payload: CreateAnswer,
@@ -89,6 +89,37 @@ async def create_answer(
         question_id=question_id, user_id=str(payload.user_id), text=payload.text
     )
     session.add(new_answer)
+
     await session.commit()
     await session.refresh(new_answer)
+
     return new_answer
+
+
+@router.get("/answers/{answer_id}", response_model=AnswerOut)
+async def get_current_answer(
+    answer_id: int, session: AsyncSession = Depends(make_session)
+):
+    answer = (
+        await session.execute(select(Answer).where(Answer.id == answer_id))
+    ).scalar_one_or_none()
+    if answer is None:
+        raise HTTPException(status_code=404, detail="answer_not_found")
+
+    return answer
+
+
+@router.delete("/answers/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_answer(answer_id: int, session: AsyncSession = Depends(make_session)):
+    deleted_answer = (
+        await session.execute(
+            delete(Answer).where(Answer.id == answer_id).returning(Answer.id)
+        )
+    ).scalar_one_or_none()
+
+    if deleted_answer is None:
+        raise HTTPException(status_code=404, detail="answer_not_found")
+
+    await session.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

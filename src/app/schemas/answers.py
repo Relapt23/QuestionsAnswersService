@@ -6,7 +6,7 @@ from uuid import UUID
 class AnswerOut(BaseModel):
     id: int
     question_id: int
-    user_id: UUID
+    user_id: str
     text: str
     created_at: datetime
 
