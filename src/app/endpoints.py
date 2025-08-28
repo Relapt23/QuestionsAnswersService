@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from src.app.schemas.questions import QuestionOut, QuestionCreate, QuestionWithAnswers
 from src.db.models import Question
@@ -55,3 +55,19 @@ async def get_questions_with_answers(
     question.answers.sort(reverse=True)
 
     return question
+
+
+@router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_question(
+    question_id: int, session: AsyncSession = Depends(make_session)
+):
+    db_question = (
+        await session.execute(
+            delete(Question).where(Question.id == question_id).returning(Question.id)
+        )
+    ).scalar_one_or_none()
+    if db_question is None:
+        raise HTTPException(status_code=404, detail="question_not_found")
+
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
