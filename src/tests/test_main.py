@@ -103,10 +103,10 @@ async def test_create_question(client, test_session):
 @pytest.mark.asyncio
 async def test_get_question_with_answers_404(client):
     # when
-    resp = await client.get("/questions/999999")
+    response = await client.get("/questions/999999")
     # then
-    assert resp.status_code == status.HTTP_404_NOT_FOUND
-    assert resp.json()["detail"] == "question_not_found"
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "question_not_found"
 
 
 @pytest.mark.asyncio
@@ -164,6 +164,7 @@ async def test_get_question_with_answers_with_answers(client, test_session):
 
     texts = {ans["text"] for ans in data["answers"]}
     users = {ans["user_id"] for ans in data["answers"]}
+
     assert texts == {"test_answer1", "test_answer2"}
     assert users == {"test_id1", "test_id2"}
 
@@ -175,10 +176,10 @@ async def test_get_question_with_answers_with_answers(client, test_session):
 @pytest.mark.asyncio
 async def test_delete_question_404(client):
     # when
-    resp = await client.delete("/questions/999999")
+    response = await client.delete("/questions/999999")
     # then
-    assert resp.status_code == status.HTTP_404_NOT_FOUND
-    assert resp.json()["detail"] == "question_not_found"
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "question_not_found"
 
 
 @pytest.mark.asyncio
@@ -253,7 +254,7 @@ async def test_delete_question_with_answers(client, test_session):
     response = await client.delete(f"/questions/{questions_params.id}")
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    # then:
+    # then
     assert (
         await test_session.execute(
             select(Question).where(Question.id == questions_params.id)
@@ -270,3 +271,100 @@ async def test_delete_question_with_answers(client, test_session):
         .all()
     )
     assert answers_after == []
+
+
+@pytest.mark.asyncio
+async def test_create_answer_question_not_found(client):
+    # given
+    answer_params = {"user_id": "test_id1", "text": " test text"}
+
+    # when
+    response = await client.post("/questions/999999/answers/", json=answer_params)
+
+    # then
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "question_not_found"
+
+
+@pytest.mark.asyncio
+async def test_create_answer_success(client, test_session):
+    # given
+    questions_params = Question(text=" test text ")
+
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    answer_params = {"user_id": "test_id", "text": "test_answer"}
+
+    # when
+    response = await client.post(
+        f"/questions/{questions_params.id}/answers/", json=answer_params
+    )
+    data = response.json()
+
+    db_answer = (
+        await test_session.execute(select(Answer).where(Answer.id == data["id"]))
+    ).scalar_one_or_none()
+
+    # then
+    assert response.status_code == status.HTTP_201_CREATED
+    assert set(data.keys()) == {"id", "question_id", "user_id", "text", "created_at"}
+    assert isinstance(data["id"], int)
+    assert data["question_id"] == questions_params.id
+    assert data["user_id"] == answer_params["user_id"]
+    assert data["text"] == "test_answer"
+
+    assert db_answer is not None
+    assert db_answer.question_id == questions_params.id
+    assert db_answer.user_id == answer_params["user_id"]
+    assert db_answer.text == "test_answer"
+
+
+@pytest.mark.asyncio
+async def test_get_answer_not_found(client):
+    # when
+    response = await client.get("/answers/999999")
+    # then
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "answer_not_found"
+
+
+@pytest.mark.asyncio
+async def test_get_answer_success(client, test_session):
+    # given
+    questions_params = Question(text="test text ")
+
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    answer = Answer(
+        question_id=questions_params.id, user_id="test_id", text="test answer"
+    )
+
+    test_session.add(answer)
+    await test_session.commit()
+
+    answer_id = answer.id
+
+    # when
+    response = await client.get(f"/answers/{answer_id}")
+    data = response.json()
+
+    db_answer = (
+        await test_session.execute(select(Answer).where(Answer.id == data["id"]))
+    ).scalar_one_or_none()
+
+    # then
+    assert response.status_code == status.HTTP_200_OK
+    assert set(data.keys()) == {"id", "question_id", "user_id", "text", "created_at"}
+    assert data["id"] == answer_id
+    assert data["question_id"] == questions_params.id
+    assert data["user_id"] == "test_id"
+    assert data["text"] == "test answer"
+
+    assert db_answer is not None
+    assert db_answer.question_id == questions_params.id
+    assert db_answer.user_id == "test_id"
+    assert db_answer.text == "test answer"
+
+
