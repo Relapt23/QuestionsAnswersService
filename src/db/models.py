@@ -12,7 +12,9 @@ class Question(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        default=func.now(), nullable=False, index=True
+        default=func.now(),
+        nullable=False,
+        index=True,
     )
 
     answers: Mapped[list["Answer"]] = relationship(
@@ -29,7 +31,9 @@ class Answer(Base):
         ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True
     )
     user_id: Mapped[str] = mapped_column(nullable=False, index=True)
-    text: Mapped[str]
+    text: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         default=func.now(), nullable=False, index=True
     )
+
+    question: Mapped[Question] = relationship(back_populates="answers")
