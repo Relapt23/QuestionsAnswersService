@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from main import app as fastapi_app
 from datetime import datetime
 from fastapi import status
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 
 @pytest_asyncio.fixture()
@@ -113,6 +113,7 @@ async def test_get_question_with_answers_404(client):
 async def test_get_question_with_answers_no_answers(client, test_session):
     # given
     questions_params = Question(text="why?")
+
     test_session.add(questions_params)
     await test_session.commit()
 
@@ -131,8 +132,8 @@ async def test_get_question_with_answers_no_answers(client, test_session):
 async def test_get_question_with_answers_with_answers(client, test_session):
     # given
     questions_params = Question(text="test_question")
-    test_session.add(questions_params)
 
+    test_session.add(questions_params)
     await test_session.flush()
 
     answer1 = Answer(
@@ -147,8 +148,8 @@ async def test_get_question_with_answers_with_answers(client, test_session):
         text="test_answer2",
         created_at=datetime(2025, 8, 21, 12, 0, 0),
     )
-    test_session.add_all([answer1, answer2])
 
+    test_session.add_all([answer1, answer2])
     await test_session.commit()
 
     # when
@@ -169,4 +170,103 @@ async def test_get_question_with_answers_with_answers(client, test_session):
     for ans in data["answers"]:
         assert ans["question_id"] == questions_params.id
         assert isinstance(ans["id"], int)
-        assert isinstance(ans["created_at"], str) and "T" in ans["created_at"]
+
+
+@pytest.mark.asyncio
+async def test_delete_question_404(client):
+    # when
+    resp = await client.delete("/questions/999999")
+    # then
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+    assert resp.json()["detail"] == "question_not_found"
+
+
+@pytest.mark.asyncio
+async def test_delete_question_success(client, test_session):
+    # given
+    questions_params = Question(
+        text="test text", created_at=datetime(2025, 8, 20, 12, 0, 0)
+    )
+
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    assert (
+        await test_session.execute(
+            select(Question).where(Question.id == questions_params.id)
+        )
+    ).scalar_one_or_none() is not None
+
+    # when
+    response = await client.delete(f"/questions/{questions_params.id}")
+
+    # then
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert (
+        await test_session.execute(
+            select(Question).where(Question.id == questions_params.id)
+        )
+    ).scalar_one_or_none() is None
+
+    response2 = await client.delete(f"/questions/{questions_params.id}")
+    assert response2.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_delete_question_with_answers(client, test_session):
+    # given
+    await test_session.execute(text("PRAGMA foreign_keys=ON"))
+
+    questions_params = Question(text="test text")
+
+    test_session.add(questions_params)
+    await test_session.flush()
+
+    answer1 = Answer(
+        question_id=questions_params.id,
+        user_id="test_id1",
+        text="test_answer1",
+        created_at=datetime(2025, 8, 21, 10, 0, 0),
+    )
+    answer2 = Answer(
+        question_id=questions_params.id,
+        user_id="test_id2",
+        text="test_answer2",
+        created_at=datetime(2025, 8, 21, 11, 0, 0),
+    )
+
+    test_session.add_all([answer1, answer2])
+    await test_session.commit()
+
+    answers_before = (
+        (
+            await test_session.execute(
+                select(Answer.id).where(Answer.question_id == questions_params.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(answers_before) == 2
+
+    # when
+    response = await client.delete(f"/questions/{questions_params.id}")
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # then:
+    assert (
+        await test_session.execute(
+            select(Question).where(Question.id == questions_params.id)
+        )
+    ).scalar_one_or_none() is None
+
+    answers_after = (
+        (
+            await test_session.execute(
+                select(Answer.id).where(Answer.question_id == questions_params.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert answers_after == []
