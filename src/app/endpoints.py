@@ -31,17 +31,17 @@ async def get_questions(
     return [QuestionResponse.model_validate(q) for q in questions]
 
 
-@router.post("/questions/", status_code=201)
+@router.post("/questions/", status_code=status.HTTP_201_CREATED)
 async def create_question(
     payload: QuestionCreateParams, session: AsyncSession = Depends(make_session)
-):
+) -> QuestionResponse:
     new_question = Question(text=payload.text.strip())
     session.add(new_question)
 
     await session.commit()
     await session.refresh(new_question)
 
-    return new_question
+    return QuestionResponse.model_validate(new_question)
 
 
 @router.get("/questions/{question_id}")
@@ -59,6 +59,7 @@ async def get_questions_with_answers(
         .unique()
         .scalar_one_or_none()
     )
+
     if not question:
         raise HTTPException(status_code=404, detail="question_not_found")
 
@@ -92,6 +93,7 @@ async def create_answer(
     db_question = (
         await session.execute(select(Question).where(Question.id == question_id))
     ).scalar_one_or_none()
+
     if db_question is None:
         raise HTTPException(status_code=404, detail="question_not_found")
 
@@ -113,6 +115,7 @@ async def get_answer(
     answer = (
         await session.execute(select(Answer).where(Answer.id == answer_id))
     ).scalar_one_or_none()
+
     if answer is None:
         raise HTTPException(status_code=404, detail="answer_not_found")
 
