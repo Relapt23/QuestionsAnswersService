@@ -2,7 +2,7 @@ import pytest_asyncio
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
-from src.db.models import Base, Question
+from src.db.models import Base, Question, Answer
 from src.db.db_config import make_session
 from httpx import ASGITransport, AsyncClient
 from main import app as fastapi_app
@@ -79,7 +79,7 @@ async def test_get_questions(client, test_session):
 
 
 @pytest.mark.asyncio
-async def test_create_question_success(client, test_session):
+async def test_create_question(client, test_session):
     # given
     questions_params = {"text": " test_text "}
 
@@ -98,3 +98,75 @@ async def test_create_question_success(client, test_session):
     assert data["text"] == "test_text"
     assert questions is not None
     assert questions.text == "test_text"
+
+
+@pytest.mark.asyncio
+async def test_get_question_with_answers_404(client):
+    # when
+    resp = await client.get("/questions/999999")
+    # then
+    assert resp.status_code == status.HTTP_404_NOT_FOUND
+    assert resp.json()["detail"] == "question_not_found"
+
+
+@pytest.mark.asyncio
+async def test_get_question_with_answers_no_answers(client, test_session):
+    # given
+    questions_params = Question(text="why?")
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    # when
+    response = await client.get(f"/questions/{questions_params.id}")
+    data = response.json()
+
+    # then
+    assert response.status_code == status.HTTP_200_OK
+    assert data["id"] == questions_params.id
+    assert data["text"] == "why?"
+    assert data["answers"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_question_with_answers_with_answers(client, test_session):
+    # given
+    questions_params = Question(text="test_question")
+    test_session.add(questions_params)
+
+    await test_session.flush()
+
+    answer1 = Answer(
+        question_id=questions_params.id,
+        user_id="test_id1",
+        text="test_answer1",
+        created_at=datetime(2025, 8, 20, 12, 0, 0),
+    )
+    answer2 = Answer(
+        question_id=questions_params.id,
+        user_id="test_id2",
+        text="test_answer2",
+        created_at=datetime(2025, 8, 21, 12, 0, 0),
+    )
+    test_session.add_all([answer1, answer2])
+
+    await test_session.commit()
+
+    # when
+    response = await client.get(f"/questions/{questions_params.id}")
+    data = response.json()
+
+    # then
+    assert response.status_code == status.HTTP_200_OK
+    assert data["id"] == questions_params.id
+    assert data["text"] == "test_question"
+    assert len(data["answers"]) == 2
+
+    texts = {ans["text"] for ans in data["answers"]}
+    users = {ans["user_id"] for ans in data["answers"]}
+    assert texts == {"test_answer1", "test_answer2"}
+    assert users == {"test_id1", "test_id2"}
+
+    for ans in data["answers"]:
+        assert ans["question_id"] == questions_params.id
+        assert isinstance(ans["id"], int)
+        assert isinstance(ans["created_at"], str) and "T" in ans["created_at"]
