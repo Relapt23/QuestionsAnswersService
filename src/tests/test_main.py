@@ -368,3 +368,69 @@ async def test_get_answer_success(client, test_session):
     assert db_answer.text == "test answer"
 
 
+@pytest.mark.asyncio
+async def test_delete_answer_404(client):
+    # when
+    response = await client.delete("/answers/999999")
+    # then
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "answer_not_found"
+
+
+@pytest.mark.asyncio
+async def test_delete_answer_success(client, test_session):
+    # given
+    questions_params = Question(text="test text")
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    answer = Answer(
+        question_id=questions_params.id, user_id="test_id", text="test answer"
+    )
+
+    test_session.add(answer)
+    await test_session.commit()
+
+    answer_id = answer.id
+
+    # when
+    response = await client.delete(f"/answers/{answer_id}")
+
+    # then
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert (
+        await test_session.execute(select(Answer).where(Answer.id == answer_id))
+    ).scalar_one_or_none() is None
+
+    response2 = await client.delete(f"/answers/{answer_id}")
+
+    assert response2.status_code == status.HTTP_404_NOT_FOUND
+    assert response2.json()["detail"] == "answer_not_found"
+
+
+@pytest.mark.asyncio
+async def test_delete_answer_success_without_question(client, test_session):
+    # given
+    questions_params = Question(text="test text")
+    test_session.add(questions_params)
+    await test_session.commit()
+
+    answer = Answer(
+        question_id=questions_params.id, user_id="test_id", text="test answer"
+    )
+
+    test_session.add(answer)
+    await test_session.commit()
+
+    answer_id = answer.id
+
+    # when
+    response = await client.delete(f"/answers/{answer_id}")
+
+    # then
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert (
+        await test_session.execute(
+            select(Question).where(Question.id == questions_params.id)
+        )
+    ).scalar_one_or_none() is not None
