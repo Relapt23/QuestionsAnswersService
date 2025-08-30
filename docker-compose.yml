@@ -9,7 +9,6 @@ services:
       - .env
     volumes:
       - ./:/app
-      - db_data:/db/database
     ports:
       - "8000:8000"
 
