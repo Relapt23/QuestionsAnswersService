@@ -84,7 +84,7 @@ async def delete_question(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/questions/{question_id}/answers/")
+@router.post("/questions/{question_id}/answers/", status_code=status.HTTP_201_CREATED)
 async def create_answer(
     question_id: int,
     payload: CreateAnswerParams,
