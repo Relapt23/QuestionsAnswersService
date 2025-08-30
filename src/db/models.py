@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
-from sqlalchemy import func, ForeignKey, Text
+from sqlalchemy import func, ForeignKey, Text, Index
 
 
 class Base(DeclarativeBase):
@@ -37,3 +37,6 @@ class Answer(Base):
     )
 
     question: Mapped[Question] = relationship(back_populates="answers")
+
+
+Index("ix_answer_question_user", Answer.question_id, Answer.user_id)

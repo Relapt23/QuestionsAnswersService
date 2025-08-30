@@ -1,10 +1,24 @@
 services:
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    command: alembic upgrade head
+
+
   app:
     build: .
     container_name: app
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - .env
     volumes:
