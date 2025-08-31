@@ -34,7 +34,7 @@ make help
 
 Это все можно увидеть в http://localhost:8000/docs, после запуска сервиса. Для наглядности запросы/параметры/ответы перечислены и тут:
 
-### GET /questions/ — список всех вопросов (новые сверху)
+### GET /questions/ - список всех вопросов (новые сверху)
 ответ (200):
 ```json
 [
@@ -43,7 +43,7 @@ make help
 ]
 ```
 
-### POST /questions/ — создать вопрос
+### POST /questions/ - создать вопрос
 тело:
 ```json
 { "text": "   Почему небо голубое?   " }
@@ -57,7 +57,7 @@ make help
 }
 ```
 
-### GET /questions/{id} — получить вопрос со всеми ответами
+### GET /questions/{id} - получить вопрос со всеми ответами
 ответ (200):
 ```json
 {
@@ -80,14 +80,14 @@ make help
 {"detail":"question_not_found"}
 ```
 
-### DELETE questions/{id} — удалить вопрос
+### DELETE questions/{id} - удалить вопрос
 ответ (204).  
 Если вопрос не найден → 404:
 ```json
 {"detail":"question_not_found"}
 ```
 
-### POST /questions/{id}/answers/ — добавить ответ к вопросу
+### POST /questions/{id}/answers/ - добавить ответ к вопросу
 Тело:
 ```json
 { "user_id": "a2bd70b6-3f73-49a9-8cbb-3d9d5b9a3be2", "text": "  Мой вариант ответа  " }
@@ -108,7 +108,7 @@ make help
 {"detail":"answer_not_found"}
 ```
 
-### GET /answers/{id} — получить конкретный ответ
+### GET /answers/{id} - получить конкретный ответ
 ответ (200):
 ```json
 {
@@ -125,7 +125,7 @@ make help
 {"detail":"answer_not_found"}
 ```
 
-### DELETE /answers/{id} — удалить ответ
+### DELETE /answers/{id} - удалить ответ
 ответ (204).  
 Если вопрос не найден → 404:
 ```json
