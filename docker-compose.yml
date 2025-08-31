@@ -1,7 +1,6 @@
 services:
-  app:
+  migrate:
     build: .
-    container_name: app
     depends_on:
       db:
         condition: service_healthy
@@ -9,7 +8,21 @@ services:
       - .env
     volumes:
       - ./:/app
-      - db_data:/db/database
+    command: alembic upgrade head
+
+
+  app:
+    build: .
+    container_name: app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
     ports:
       - "8000:8000"
 
