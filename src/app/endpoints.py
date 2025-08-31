@@ -35,7 +35,7 @@ async def get_questions(
 async def create_question(
     payload: QuestionCreateParams, session: AsyncSession = Depends(make_session)
 ) -> QuestionResponse:
-    new_question = Question(text=payload.text.strip())
+    new_question = Question(text=payload.text)
     session.add(new_question)
 
     await session.commit()

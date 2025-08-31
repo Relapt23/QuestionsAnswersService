@@ -1,5 +1,8 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+from pydantic import BaseModel, ConfigDict, StringConstraints
+
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class AnswerResponse(BaseModel):
@@ -14,13 +17,13 @@ class AnswerResponse(BaseModel):
 
 class CreateAnswerParams(BaseModel):
     user_id: str
-    text: str
+    text: NonEmptyStr
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class QuestionCreateParams(BaseModel):
-    text: str
+    text: NonEmptyStr
 
 
 class QuestionResponse(BaseModel):
