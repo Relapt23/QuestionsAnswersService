@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
-from src.db.db_adapter import (
+from src.db.db_repository import (
     QuestionsRepository,
-    make_q_adapter,
+    make_q_repository,
     AnswersRepository,
-    make_a_adapter,
+    make_a_repository,
 )
 
 from src.app.schemas import (
@@ -20,9 +20,9 @@ router = APIRouter()
 
 @router.get("/questions/")
 async def get_questions(
-    q_adapter: QuestionsRepository = Depends(make_q_adapter),
+    q_repository: QuestionsRepository = Depends(make_q_repository),
 ) -> list[QuestionResponse]:
-    questions = await q_adapter.get_questions()
+    questions = await q_repository.get_questions()
 
     return [QuestionResponse.model_validate(q) for q in questions]
 
@@ -30,18 +30,18 @@ async def get_questions(
 @router.post("/questions/", status_code=status.HTTP_201_CREATED)
 async def create_question(
     payload: QuestionCreateParams,
-    q_adapter: QuestionsRepository = Depends(make_q_adapter),
+    q_repository: QuestionsRepository = Depends(make_q_repository),
 ) -> QuestionResponse:
-    new_question = await q_adapter.create_questions(payload.text)
+    new_question = await q_repository.create_questions(payload.text)
 
     return QuestionResponse.model_validate(new_question)
 
 
 @router.get("/questions/{question_id}")
 async def get_questions_with_answers(
-    question_id: int, q_adapter: QuestionsRepository = Depends(make_q_adapter)
+    question_id: int, q_repository: QuestionsRepository = Depends(make_q_repository)
 ) -> QuestionWithAnswersResponse:
-    question = await q_adapter.get_questions_with_answers(question_id)
+    question = await q_repository.get_questions_with_answers(question_id)
 
     if not question:
         raise HTTPException(status_code=404, detail="question_not_found")
@@ -51,9 +51,9 @@ async def get_questions_with_answers(
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_question(
-    question_id: int, q_adapter: QuestionsRepository = Depends(make_q_adapter)
+    question_id: int, q_repository: QuestionsRepository = Depends(make_q_repository)
 ) -> Response:
-    db_question = await q_adapter.delete_question(question_id)
+    db_question = await q_repository.delete_question(question_id)
 
     if db_question is None:
         raise HTTPException(status_code=404, detail="question_not_found")
@@ -65,15 +65,15 @@ async def delete_question(
 async def create_answer(
     question_id: int,
     payload: CreateAnswerParams,
-    a_adapter: AnswersRepository = Depends(make_a_adapter),
-    q_adapter: QuestionsRepository = Depends(make_q_adapter),
+    a_repository: AnswersRepository = Depends(make_a_repository),
+    q_repository: QuestionsRepository = Depends(make_q_repository),
 ) -> AnswerResponse:
-    db_question = await q_adapter.get_question(question_id)
+    db_question = await q_repository.get_question_by_id(question_id)
 
     if db_question is None:
         raise HTTPException(status_code=404, detail="question_not_found")
 
-    new_answer = await a_adapter.create_answer(
+    new_answer = await a_repository.create_answer(
         q_id=question_id, user_id=payload.user_id, text=payload.text
     )
 
@@ -82,9 +82,9 @@ async def create_answer(
 
 @router.get("/answers/{answer_id}")
 async def get_answer(
-    answer_id: int, a_adapter: AnswersRepository = Depends(make_a_adapter)
+    answer_id: int, a_repository: AnswersRepository = Depends(make_a_repository)
 ) -> AnswerResponse:
-    answer = await a_adapter.get_answer_by_answer_id(answer_id)
+    answer = await a_repository.get_answer_by_id(answer_id)
 
     if answer is None:
         raise HTTPException(status_code=404, detail="answer_not_found")
@@ -94,9 +94,9 @@ async def get_answer(
 
 @router.delete("/answers/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_answer(
-    answer_id: int, a_adapter: AnswersRepository = Depends(make_a_adapter)
+    answer_id: int, a_repository: AnswersRepository = Depends(make_a_repository)
 ) -> Response:
-    deleted_answer = await a_adapter.delete_answer(answer_id)
+    deleted_answer = await a_repository.delete_answer(answer_id)
 
     if deleted_answer is None:
         raise HTTPException(status_code=404, detail="answer_not_found")

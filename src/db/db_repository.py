@@ -18,7 +18,7 @@ class QuestionsRepository:
 
         return db_questions.scalars().all()
 
-    async def get_question(self, q_id: int) -> Optional[Question]:
+    async def get_question_by_id(self, q_id: int) -> Optional[Question]:
         db_question = await self.session.execute(
             select(Question).where(Question.id == q_id)
         )
@@ -69,7 +69,7 @@ class AnswersRepository:
 
         return new_answer
 
-    async def get_answer_by_answer_id(self, a_id: int) -> Optional[Answer]:
+    async def get_answer_by_id(self, a_id: int) -> Optional[Answer]:
         db_answer = await self.session.execute(select(Answer).where(Answer.id == a_id))
         return db_answer.scalar_one_or_none()
 
@@ -83,13 +83,13 @@ class AnswersRepository:
         return deleted_answer.scalar_one_or_none()
 
 
-async def make_q_adapter(
+async def make_q_repository(
     session: AsyncSession = Depends(make_session),
 ) -> QuestionsRepository:
     return QuestionsRepository(session)
 
 
-async def make_a_adapter(
+async def make_a_repository(
     session: AsyncSession = Depends(make_session),
 ) -> AnswersRepository:
     return AnswersRepository(session)
