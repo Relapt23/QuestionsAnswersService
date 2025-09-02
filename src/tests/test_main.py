@@ -5,7 +5,7 @@ from sqlalchemy.pool import StaticPool
 from src.db.models import Base, Question, Answer
 from src.db.db_config import make_session
 from httpx import ASGITransport, AsyncClient
-from main import app as fastapi_app
+from src.main import app as fastapi_app
 from datetime import datetime
 from fastapi import status
 from sqlalchemy import select, text
